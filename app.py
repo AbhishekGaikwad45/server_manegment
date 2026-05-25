@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import models
 import monitor
 import os
+from models import get_all_servers, add_server
+
 
 load_dotenv('.env.local')
 
@@ -13,10 +15,12 @@ app = Flask(__name__)
 app.secret_key = 'serverwatch-secret-key-change-in-production'
 
 models.init_db()
-
+print("RUNNING THIS FILE")
+print(__file__)
 scheduler = BackgroundScheduler()
 scheduler.add_job(monitor.check_all_servers, 'interval', seconds=30, id='ping_all')
 scheduler.start()
+
 
 def login_required(f):
     @wraps(f)
@@ -75,22 +79,28 @@ def api_status():
 
 @app.route('/servers/add', methods=['GET', 'POST'])
 @login_required
-def add_server():
-    parents = [s for s in models.get_all_servers() if s['parent_id'] is None]
-    if request.method == 'POST':
-        models.add_server(
-            name            = request.form['name'],
-            ip              = request.form['ip'],
-            port            = request.form.get('port', 22),
-            parent_id       = request.form.get('parent_id') or None,
-            ssh_user        = request.form.get('ssh_user', ''),
-            ssh_password    = request.form.get('ssh_password', ''),
-            restart_command = request.form.get('restart_command', 'sudo systemctl restart nginx')
-        )
-        flash('Server added successfully!')
-        return redirect(url_for('dashboard'))
-    return render_template('add_server.html', parents=parents)
+def add_server_route():
 
+    if request.method == 'POST':
+
+        add_server(
+            request.form['name'],
+            request.form['ip'],
+            request.form.get('port') or 22,
+            request.form.get('parent_id') or None,
+            request.form.get('ssh_user'),
+            request.form.get('ssh_password'),
+            request.form.get('restart_command')
+        )
+
+        return redirect('/')
+
+    parents = models.get_all_servers()
+
+    return render_template(
+        'add_server.html',
+        parents=parents
+    )
 @app.route('/servers/delete/<int:server_id>', methods=['POST'])
 @login_required
 def delete_server(server_id):
@@ -153,8 +163,67 @@ def delete_server_api(sid):
         "message": "Server deleted successfully"
     })
     
+@app.route('/servers/edit/<int:server_id>', methods=['GET', 'POST'])
+@login_required
+def edit_server(server_id):
+
+    server = models.get_server(server_id)
+
+    if not server:
+        flash('Server not found')
+        return redirect(url_for('dashboard'))
+
+    parents = [
+        s for s in models.get_all_servers()
+        if s['id'] != server_id
+    ]
+
+    if request.method == 'POST':
+
+        conn = models.get_db()
+        c = conn.cursor()
+
+        c.execute("""
+            UPDATE servers
+            SET
+                name=%s,
+                ip=%s,
+                port=%s,
+                parent_id=%s,
+                ssh_user=%s,
+                ssh_password=%s,
+                restart_command=%s
+            WHERE id=%s
+        """, (
+            request.form['name'],
+            request.form['ip'],
+            request.form.get('port', 22),
+            request.form.get('parent_id') or None,
+            request.form.get('ssh_user', ''),
+            request.form.get('ssh_password', ''),
+            request.form.get(
+                'restart_command',
+                'sudo systemctl restart nginx'
+            ),
+            server_id
+        ))
+
+        conn.commit()
+
+        c.close()
+        conn.close()
+
+        flash('Server updated successfully')
+
+        return redirect(url_for('dashboard'))
+
+    return render_template(
+        'edit_server.html',
+        server=server,
+        parents=parents
+    )  
     
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
 

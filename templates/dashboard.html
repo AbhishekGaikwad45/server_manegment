@@ -218,11 +218,11 @@
           <h2>Network Topology</h2>
 
           <div class="legend-row">
-    <span class="leg up">● Online</span>
-    <span class="leg down">● Down</span>
-    <span class="leg warn">● Warning</span>
-    <span class="leg unknown">● Unknown</span>
-</div>
+            <span class="leg up">● Online</span>
+            <span class="leg down">● Down</span>
+            <span class="leg warn">● Warning</span>
+            <span class="leg unknown">● Unknown</span>
+          </div>
 
 
 
@@ -230,29 +230,28 @@
 
         <div id="topology-wrapper">
 
-    <div class="topology-controls">
+          <div class="topology-controls">
 
-        <button onclick="zoomIn()" class="zoom-btn">
-            +
-        </button>
+            <button onclick="zoomIn()" class="zoom-btn">
+              +
+            </button>
 
-        <button onclick="zoomOut()" class="zoom-btn">
-            −
-        </button>
+            <button onclick="zoomOut()" class="zoom-btn">
+              −
+            </button>
 
-        <button onclick="resetZoom()" class="zoom-btn">
-            ↺
-        </button>
+            <button onclick="resetZoom()" class="zoom-btn">
+              ↺
+            </button>
 
-    </div>
+          </div>
 
-    <svg id="topo-svg"></svg>
+          <svg id="topo-svg"></svg>
 
-    <div id="topo-tooltip"
-         class="topo-tooltip">
-    </div>
+          <div id="topo-tooltip" class="topo-tooltip">
+          </div>
 
-</div>
+        </div>
 
       </div>
 
@@ -401,6 +400,9 @@
 
                       History
                     </button>
+                    <a href="/servers/edit/{{ srv.id }}" class="btn btn-success btn-sm">
+                      Edit
+                    </a>
 
                     <!-- DELETE -->
                     <button class="btn-sm btn-delete" onclick="deleteSingleServer({{ srv.id }}, '{{ srv.name }}')">

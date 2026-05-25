@@ -21,7 +21,8 @@ conn = pg8000.connect(
 conn.autocommit = True
 c = conn.cursor()
 
-print("\n🚀 Creating Custom Tree Topology...\n")
+print("\n🚀 Creating LIVE Server Topology...\n")
+
 
 # ----------------------------------------------------
 # HELPER
@@ -52,9 +53,7 @@ def add_server(
 
     sid = c.fetchone()[0]
 
-    typ = "🌐 LIVE" if not ip.startswith("192.168") else "🏠 OFFLINE"
-
-    print(f"✅ {typ} : {name}")
+    print(f"✅ 🌐 LIVE : {name} ({ip})")
 
     return sid
 
@@ -64,118 +63,100 @@ def add_server(
 # ====================================================
 
 root = add_server(
-    "Main-Core",
+    "Google-DNS",
     "8.8.8.8"
 )
 
 
 # ====================================================
-# LEFT BRANCH
+# CLOUD BRANCH
 # ====================================================
 
-left_1 = add_server(
-    "Left-Gateway",
-    "192.168.1.1",
-    root
-)
-
-left_2 = add_server(
-    "Left-Node",
-    "192.168.1.2",
-    left_1
-)
-
-left_down_1 = add_server(
-    "Left-Child-01",
-    "192.168.1.10",
-    left_1
-)
-
-left_down_2 = add_server(
-    "Left-Child-02",
-    "192.168.1.11",
-    left_1
-)
-
-
-# ====================================================
-# RIGHT BRANCH
-# ====================================================
-
-right_1 = add_server(
-    "Right-Core",
+cloud_1 = add_server(
+    "Cloudflare-DNS",
     "1.1.1.1",
     root
 )
 
-right_2 = add_server(
-    "Right-Hub",
-    "192.168.2.1",
-    right_1
-)
-
-right_3 = add_server(
-    "Right-Edge",
-    "192.168.2.2",
-    right_2
-)
-
-
-# ====================================================
-# RIGHT SIDE CHILDREN
-# ====================================================
-
-right_child_1 = add_server(
-    "Right-Web",
-    "142.250.195.46",
-    right_2
-)
-
-right_child_2 = add_server(
-    "Right-API",
-    "192.168.2.20",
-    right_2
-)
-
-right_child_3 = add_server(
-    "Right-DB",
-    "192.168.2.21",
-    right_2
-)
-
-right_child_4 = add_server(
-    "Right-Cache",
-    "192.168.2.22",
-    right_2
-)
-
-
-# ====================================================
-# DEEP CHILDREN
-# ====================================================
-
-deep_1 = add_server(
-    "Deep-Service-01",
-    "192.168.3.1",
-    right_child_2
-)
-
-deep_2 = add_server(
-    "Deep-Service-02",
-    "192.168.3.2",
-    right_child_2
-)
-
-deep_3 = add_server(
-    "Deep-Service-03",
+cloud_2 = add_server(
+    "Quad9-DNS",
     "9.9.9.9",
-    right_child_2
+    cloud_1
 )
 
-deep_4 = add_server(
-    "Deep-Service-04",
-    "192.168.3.4",
-    right_child_2
+cloud_3 = add_server(
+    "OpenDNS",
+    "208.67.222.222",
+    cloud_1
+)
+
+
+# ====================================================
+# GOOGLE SERVICES
+# ====================================================
+
+google_1 = add_server(
+    "Google-Web",
+    "142.250.195.46",
+    root
+)
+
+google_2 = add_server(
+    "YouTube",
+    "142.250.183.206",
+    google_1
+)
+
+google_3 = add_server(
+    "Gmail",
+    "64.233.177.17",
+    google_1
+)
+
+
+# ====================================================
+# AMAZON AWS
+# ====================================================
+
+aws_1 = add_server(
+    "AWS-Server-01",
+    "52.95.110.1",
+    root
+)
+
+aws_2 = add_server(
+    "AWS-Server-02",
+    "54.239.28.85",
+    aws_1
+)
+
+aws_3 = add_server(
+    "AWS-Server-03",
+    "3.33.165.172",
+    aws_1
+)
+
+
+# ====================================================
+# MICROSOFT / AZURE
+# ====================================================
+
+azure_1 = add_server(
+    "Azure-Gateway",
+    "20.112.52.29",
+    root
+)
+
+azure_2 = add_server(
+    "Microsoft",
+    "40.76.4.15",
+    azure_1
+)
+
+azure_3 = add_server(
+    "Bing",
+    "204.79.197.200",
+    azure_1
 )
 
 
@@ -184,16 +165,15 @@ deep_4 = add_server(
 # ====================================================
 
 add_server(
-    "Final-Leaf",
-    "192.168.5.1",
-    right_3
+    "Final-Live-Node",
+    "151.101.1.69",
+    azure_3
 )
 
 c.close()
 conn.close()
 
 print("\n🎉 DONE!")
-print("🌐 LIVE servers = ONLINE")
-print("🏠 192.168.x.x = OFFLINE")
+print("🌐 ALL servers are LIVE")
 print("\nDashboard:")
-print("http://localhost:5000")
+print("http://localhost:6000")

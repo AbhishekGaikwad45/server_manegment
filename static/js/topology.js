@@ -241,7 +241,8 @@ function drawTopology(servers) {
     txt.textContent = label;
 
     const parentSrv = s.parent_id ? servers.find(x => x.id === s.parent_id) : null;
-    g.addEventListener('mouseenter', () => {
+    g.addEventListener('mouseenter', (ev) => {
+
       const statusText =
         status === 'up'
           ? 'ONLINE'
@@ -299,30 +300,118 @@ function drawTopology(servers) {
     </div>
 
     ${parentSrv
-          ?
-          `
+          ? `
       <div class="tooltip-item">
         <span class="tooltip-label">Parent</span>
         <span class="tooltip-value">${parentSrv.name}</span>
       </div>
       `
-          :
-          ''
+          : ''
         }
 
   </div>
 
 </div>
 `;
+
       tooltip.style.opacity = '1';
+      tooltip.style.display = 'block';
+
+      const wrapper =
+        document.getElementById('topology-wrapper');
+
+      const wrapperRect =
+        wrapper.getBoundingClientRect();
+
+      const nodeRect =
+        g.getBoundingClientRect();
+
+      let left =
+        nodeRect.right - wrapperRect.left + 15;
+
+      let top =
+        nodeRect.top - wrapperRect.top;
+
+
+      /* keep tooltip inside graph */
+
+      const tooltipWidth = 260;
+      const tooltipHeight = 170;
+
+      if (left + tooltipWidth > wrapperRect.width) {
+        left = wrapperRect.width - tooltipWidth - 20;
+      }
+
+      if (top + tooltipHeight > wrapperRect.height) {
+        top = wrapperRect.height - tooltipHeight - 20;
+      }
+
+      if (top < 10) {
+        top = 10;
+      }
+
+      if (left < 10) {
+        left = 10;
+      }
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+
     });
-    g.addEventListener('mousemove', ev => {
-      const r = svg.getBoundingClientRect();
-      const lx = ev.clientX - r.left, ly = ev.clientY - r.top;
-      tooltip.style.left = (lx > r.width * 0.65 ? lx - 178 : lx + 14) + 'px';
-      tooltip.style.top = (ly + 10) + 'px';
+
+
+    g.addEventListener('mousemove', (ev) => {
+
+      const wrapper =
+        document.getElementById('topology-wrapper');
+
+      const wrapperRect =
+        wrapper.getBoundingClientRect();
+
+      const nodeRect =
+        g.getBoundingClientRect();
+
+      let left =
+        nodeRect.right - wrapperRect.left + 15;
+
+      let top =
+        nodeRect.top - wrapperRect.top;
+
+
+      /* keep tooltip inside graph */
+
+      const tooltipWidth = 260;
+      const tooltipHeight = 170;
+
+      if (left + tooltipWidth > wrapperRect.width) {
+        left = wrapperRect.width - tooltipWidth - 20;
+      }
+
+      if (top + tooltipHeight > wrapperRect.height) {
+        top = wrapperRect.height - tooltipHeight - 20;
+      }
+
+      if (top < 10) {
+        top = 10;
+      }
+
+      if (left < 10) {
+        left = 10;
+      }
+
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = top + 'px';
+
     });
-    g.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
+
+
+    g.addEventListener('mouseleave', () => {
+
+      tooltip.style.opacity = '0';
+
+      tooltip.style.display = 'none';
+
+    });
     g.addEventListener('click', () => { if (typeof pingServer === 'function') pingServer(s.id, s.name); });
   });
 }
@@ -332,66 +421,66 @@ const wrapper = document.getElementById('topology-wrapper');
 
 wrapper.addEventListener('wheel', (e) => {
 
-    e.preventDefault();
+  e.preventDefault();
 
-    if (e.deltaY < 0) {
-        currentScale += 0.1;
-    } else {
-        currentScale -= 0.1;
-    }
+  if (e.deltaY < 0) {
+    currentScale += 0.1;
+  } else {
+    currentScale -= 0.1;
+  }
 
-    if (currentScale < 0.3) {
-        currentScale = 0.3;
-    }
+  if (currentScale < 0.3) {
+    currentScale = 0.3;
+  }
 
-    if (currentScale > 3) {
-        currentScale = 3;
-    }
+  if (currentScale > 3) {
+    currentScale = 3;
+  }
 
-    const svg = document.getElementById('topo-svg');
+  const svg = document.getElementById('topo-svg');
 
-    svg.style.transform = `scale(${currentScale})`;
+  svg.style.transform = `scale(${currentScale})`;
 
-    svg.style.transformOrigin = 'top left';
+  svg.style.transformOrigin = 'top left';
 
 });
 
 let topologyScale = 1;
 
-function applyZoom(){
+function applyZoom() {
 
-    const svg = document.getElementById('topo-svg');
+  const svg = document.getElementById('topo-svg');
 
-    svg.style.transform =
-        `scale(${topologyScale})`;
+  svg.style.transform =
+    `scale(${topologyScale})`;
 }
 
-function zoomIn(){
+function zoomIn() {
 
-    topologyScale += 0.1;
+  topologyScale += 0.1;
 
-    if(topologyScale > 2){
-        topologyScale = 2;
-    }
+  if (topologyScale > 2) {
+    topologyScale = 2;
+  }
 
-    applyZoom();
+  applyZoom();
 }
 
-function zoomOut(){
+function zoomOut() {
 
-    topologyScale -= 0.1;
+  topologyScale -= 0.1;
 
-    if(topologyScale < 0.5){
-        topologyScale = 0.5;
-    }
+  if (topologyScale < 0.5) {
+    topologyScale = 0.5;
+  }
 
-    applyZoom();
+  applyZoom();
 }
 
-function resetZoom(){
+function resetZoom() {
 
-    topologyScale = 1;
+  topologyScale = 1;
 
-    applyZoom();
+  applyZoom();
 }
 drawTopology(SERVER_DATA);

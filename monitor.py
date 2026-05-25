@@ -20,24 +20,93 @@ _lock = threading.Lock()
 
 
 def ping_host(ip, timeout=2):
-    """Returns (status, ping_ms). status = 'up'|'down'|'warning'"""
-    try:
-        param = '-n' if platform.system().lower() == 'windows' else '-c'
-        start = time.time()
-        result = subprocess.run(
-            ['ping', param, '1', '-W', str(timeout), ip],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=timeout + 1
-        )
-        ms = int((time.time() - start) * 1000)
-        if result.returncode == 0:
-            status = 'warning' if ms > 200 else 'up'
-            return status, ms
-        return 'down', None
-    except Exception:
-        return 'down', None
 
+    try:
+
+        is_windows = (
+            platform.system().lower() == 'windows'
+        )
+
+        if is_windows:
+
+            cmd = [
+                'ping',
+                '-n',
+                '1',
+                '-w',
+                str(timeout * 1000),
+                ip
+            ]
+
+        else:
+
+            cmd = [
+                'ping',
+                '-c',
+                '1',
+                '-W',
+                str(timeout),
+                ip
+            ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=timeout + 2
+        )
+
+        output = result.stdout.lower()
+
+        success = (
+            result.returncode == 0
+            or 'ttl=' in output
+        )
+
+        if not success:
+            return 'down', None
+
+        ping_ms = None
+
+        # WINDOWS
+        if 'time=' in output:
+
+            try:
+
+                if 'ms' in output:
+
+                    part = output.split('time=')[1]
+
+                    value = part.split('ms')[0]
+
+                    value = value.replace('<', '').strip()
+
+                    ping_ms = int(float(value))
+
+            except:
+                ping_ms = 1
+
+        # LINUX
+        elif 'time<' in output:
+
+            ping_ms = 1
+
+        if ping_ms is None:
+            ping_ms = 0
+
+        status = (
+            'warning'
+            if ping_ms > 200
+            else 'up'
+        )
+
+        return status, ping_ms
+
+    except Exception as e:
+
+        print("PING ERROR:", e)
+
+        return 'down', None
 
 def tcp_check(ip, port=22, timeout=3):
     """Fallback TCP check when ICMP ping is blocked."""
@@ -60,10 +129,19 @@ def check_server(server):
     name = server['name']
 
     status, ping_ms = ping_host(ip)
+
     if status == 'down':
         status, ping_ms = tcp_check(ip, port)
 
-    update_server_status(sid, status, ping_ms)
+    print(
+        f"[CHECK] {name} | {ip} | {status} | {ping_ms}"
+    )
+
+    update_server_status(
+        sid,
+        status,
+        ping_ms
+    )
 
     with _lock:
         prev = _prev_status.get(sid)
