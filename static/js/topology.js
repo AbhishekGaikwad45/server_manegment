@@ -38,11 +38,17 @@ function drawTopology(servers) {
     }
   });
 
-  const pos = {};
+  const pos = window.savedNodePositions || {};
+
+  window.savedNodePositions = pos;
 
   function setPosition(node, x, y) {
 
-    pos[node.id] = { x, y };
+   if (!pos[node.id]) {
+
+  pos[node.id] = { x, y };
+
+}
 
     const children = childMap[node.id] || [];
 
@@ -82,37 +88,65 @@ function drawTopology(servers) {
 
   });
 
-  const allX = Object.values(pos).map(p => p.x);
-  const allY = Object.values(pos).map(p => p.y);
+  const allX =
+  Object.values(pos).map(p => p.x);
 
-  const minX = Math.min(...allX);
+const allY =
+  Object.values(pos).map(p => p.y);
 
-  const maxX = Math.max(...allX);
+const minX =
+  Math.min(...allX);
 
-  const minY = Math.min(...allY);
+const maxX =
+  Math.max(...allX);
 
-  const maxY = Math.max(...allY);
+const minY =
+  Math.min(...allY);
 
-  const PADDING = 400;
+const maxY =
+  Math.max(...allY);
 
-  const SVG_W =
-    (maxX - minX) + PADDING * 2;
 
-  const SVG_H =
-    (maxY - minY) + PADDING * 2;
+/* =========================
+   DYNAMIC FIT
+========================= */
 
-  svg.setAttribute(
-    'viewBox',
+const paddingX = 220;
 
-    `${minX - PADDING}
-   ${minY - PADDING}
-   ${SVG_W}
-   ${SVG_H}`
-  );
+const paddingTop = 120;
 
-  svg.setAttribute('width', SVG_W);
+const paddingBottom = 60;
 
-  svg.setAttribute('height', SVG_H);
+const graphWidth =
+  (maxX - minX) + paddingX * 2;
+
+const graphHeight =
+  (maxY - minY) +
+  paddingTop +
+  paddingBottom;
+
+
+/* =========================
+   PERFECT CENTER VIEW
+========================= */
+
+svg.setAttribute(
+  'viewBox',
+
+  `${minX - paddingX}
+   ${minY - paddingTop}
+   ${graphWidth}
+   ${graphHeight}`
+);
+
+
+/* =========================
+   REMOVE HUGE SVG SPACE
+========================= */
+
+svg.style.width = '100%';
+
+svg.style.height = `${graphHeight}px`;
 
 
   // edges
@@ -207,6 +241,26 @@ function drawTopology(servers) {
     const c = COLOR_MAP[status] || COLOR_MAP.unknown;
     const isParent = !s.parent_id;
     const g = svgEl('g', { cursor: 'pointer' }, svg);
+    /* =========================
+   NODE DRAG START
+========================= */
+
+g.addEventListener('mousedown', (e) => {
+
+  e.stopPropagation();
+
+  activeNode = s;
+
+  nodeDragging = true;
+
+  nodeStartX = e.clientX;
+  nodeStartY = e.clientY;
+
+  initialNodeX = p.x;
+  initialNodeY = p.y;
+
+});
+    
     const rx0 = p.x - NODE_W / 2, ry0 = p.y - NODE_H / 2;
 
     svgEl('rect', {
@@ -415,72 +469,224 @@ function drawTopology(servers) {
     g.addEventListener('click', () => { if (typeof pingServer === 'function') pingServer(s.id, s.name); });
   });
 }
-let currentScale = 1;
-
 const wrapper = document.getElementById('topology-wrapper');
+const svg = document.getElementById('topo-svg');
+
+let scale = 1;
+let panX = 0;
+let panY = 0;
+
+let isDragging = false;
+let activeNode = null;
+
+let nodeDragging = false;
+
+let nodeStartX = 0;
+let nodeStartY = 0;
+
+let initialNodeX = 0;
+let initialNodeY = 0;
+let startX = 0;
+let startY = 0;
+
+function updateTransform() {
+
+  svg.style.transform =
+    `translate(${panX}px, ${panY}px) scale(${scale})`;
+
+  svg.style.transformOrigin = '0 0';
+}
+
+
+/* =========================
+   SMOOTH MOUSE WHEEL ZOOM
+========================= */
 
 wrapper.addEventListener('wheel', (e) => {
 
   e.preventDefault();
 
-  if (e.deltaY < 0) {
-    currentScale += 0.1;
-  } else {
-    currentScale -= 0.1;
-  }
+  const zoomIntensity = 0.1;
 
-  if (currentScale < 0.3) {
-    currentScale = 0.3;
-  }
+  const rect = wrapper.getBoundingClientRect();
 
-  if (currentScale > 3) {
-    currentScale = 3;
-  }
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
 
-  const svg = document.getElementById('topo-svg');
+  const wheel =
+    e.deltaY < 0 ? 1 : -1;
 
-  svg.style.transform = `scale(${currentScale})`;
+  const zoom =
+    Math.exp(wheel * zoomIntensity);
 
-  svg.style.transformOrigin = 'top left';
+  const newScale =
+    Math.min(
+      Math.max(0.3, scale * zoom),
+      5
+    );
+
+  // mouse point stable keep
+  panX =
+    mouseX -
+    ((mouseX - panX) * (newScale / scale));
+
+  panY =
+    mouseY -
+    ((mouseY - panY) * (newScale / scale));
+
+  scale = newScale;
+
+  updateTransform();
 
 });
 
-let topologyScale = 1;
 
-function applyZoom() {
+/* =========================
+   DRAG / PAN
+========================= */
 
-  const svg = document.getElementById('topo-svg');
+wrapper.addEventListener('mousedown', (e) => {
 
-  svg.style.transform =
-    `scale(${topologyScale})`;
-}
+  if (nodeDragging) return;
+
+  isDragging = true;
+
+  startX = e.clientX - panX;
+
+  startY = e.clientY - panY;
+
+  wrapper.style.cursor = 'grabbing';
+
+});
+
+window.addEventListener('mousemove', (e) => {
+
+  /* =========================
+     NODE DRAG
+  ========================= */
+
+  if (nodeDragging && activeNode) {
+
+    const dx =
+      (e.clientX - nodeStartX) / scale;
+
+    const dy =
+      (e.clientY - nodeStartY) / scale;
+
+    const pos =
+      window.savedNodePositions[activeNode.id];
+
+    pos.x = initialNodeX + dx;
+
+    pos.y = initialNodeY + dy;
+
+    redrawTopology();
+
+    return;
+  }
+
+
+  /* =========================
+     GRAPH PAN
+  ========================= */
+
+  if (!isDragging) return;
+
+  panX = e.clientX - startX;
+
+  panY = e.clientY - startY;
+
+  updateTransform();
+
+});
+
+window.addEventListener('mouseup', () => {
+
+  isDragging = false;
+
+  nodeDragging = false;
+
+  activeNode = null;
+
+  wrapper.style.cursor = 'grab';
+
+});
+
+
+/* =========================
+   BUTTON FUNCTIONS
+========================= */
 
 function zoomIn() {
 
-  topologyScale += 0.1;
+  scale += 0.2;
 
-  if (topologyScale > 2) {
-    topologyScale = 2;
+  if (scale > 5) {
+    scale = 5;
   }
 
-  applyZoom();
+  updateTransform();
 }
 
 function zoomOut() {
 
-  topologyScale -= 0.1;
+  scale -= 0.2;
 
-  if (topologyScale < 0.5) {
-    topologyScale = 0.5;
+  if (scale < 0.3) {
+    scale = 0.3;
   }
 
-  applyZoom();
+  updateTransform();
 }
 
 function resetZoom() {
 
-  topologyScale = 1;
+  scale = 1;
 
-  applyZoom();
+  /* =========================
+     AUTO CENTER GRAPH
+  ========================= */
+
+  const wrapperRect =
+    wrapper.getBoundingClientRect();
+
+  const svgRect =
+    svg.getBBox();
+
+  panX =
+    (wrapperRect.width / 2)
+    - ((svgRect.x + svgRect.width / 2));
+
+panY = -20;
+
+  updateTransform();
+
+  showToast(
+    'Topology reset successfully',
+    'info'
+  );
+
+}
+
+updateTransform();
+
+
+function redrawTopology() {
+
+  const svg =
+    document.getElementById('topo-svg');
+
+  svg.innerHTML = '';
+
+  drawTopology(SERVER_DATA);
+
+  updateTransform();
+
 }
 drawTopology(SERVER_DATA);
+
+setTimeout(() => {
+
+  resetZoom();
+
+}, 200);

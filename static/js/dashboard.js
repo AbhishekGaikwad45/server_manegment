@@ -1,23 +1,35 @@
 let refreshCountdown = 15;
 
 // Toast
-function showToast(msg, duration = 3500) {
+function showToast(
+  msg,
+  type = 'info',
+  duration = 3500
+) {
 
-  const t = document.getElementById('toast');
+  const t =
+    document.getElementById('toast');
 
   t.textContent = msg;
 
-  t.classList.add('show');
+  t.className =
+    `toast show toast-${type}`;
 
   setTimeout(() => {
+
     t.classList.remove('show');
+
   }, duration);
+
 }
 
 // Ping
 function pingServer(id, name) {
 
-  showToast(`Pinging ${name}...`);
+  showToast(
+    `Pinging ${name}...`,
+    'info'
+  );
 
   fetch(`/api/ping/${id}`, {
     method:'POST'
@@ -27,20 +39,49 @@ function pingServer(id, name) {
 
   .then(data => {
 
-    const ms = data.ping_ms
+    const ms =
+      data.ping_ms
       ? `${data.ping_ms}ms`
       : 'timeout';
 
-    showToast(
-      `${name}: ${data.status.toUpperCase()} — ${ms}`
-    );
+    if (data.status === 'up') {
+
+      showToast(
+        `✓ ${name} is ONLINE (${ms})`,
+        'success'
+      );
+
+    }
+    else if (data.status === 'warning') {
+
+      showToast(
+        `⚠ ${name} WARNING (${ms})`,
+        'warning'
+      );
+
+    }
+    else {
+
+      showToast(
+        `✗ ${name} is OFFLINE`,
+        'error'
+      );
+
+    }
 
     refreshNow();
+
   })
 
   .catch(() => {
-    showToast('Ping request failed');
+
+    showToast(
+      `✗ Ping failed for ${name}`,
+      'error'
+    );
+
   });
+
 }
 
 // Restart
@@ -48,7 +89,11 @@ function restartServer(id, name) {
 
   if (!confirm(`Restart ${name}?`)) return;
 
-  showToast(`Restarting ${name}...`, 5000);
+  showToast(
+    `Restarting ${name}...`,
+    'info',
+    5000
+  );
 
   fetch(`/api/restart/${id}`, {
     method:'POST'
@@ -58,17 +103,37 @@ function restartServer(id, name) {
 
   .then(data => {
 
-    showToast(
-      data.success
-      ? `✓ ${name}: ${data.message}`
-      : `✗ ${name}: ${data.message}`,
-      5000
-    );
+    if (data.success) {
+
+      showToast(
+        `✓ ${name} restarted successfully`,
+        'success',
+        5000
+      );
+
+    } else {
+
+      showToast(
+        `✗ ${name} restart failed`,
+        'error',
+        5000
+      );
+
+    }
+
+    refreshNow();
+
   })
 
   .catch(() => {
-    showToast('Restart failed');
+
+    showToast(
+      `✗ Restart request failed`,
+      'error'
+    );
+
   });
+
 }
 
 // Filter
@@ -386,7 +451,10 @@ function deleteSingleServer(id, name) {
   });
 }
 
-
+showToast(
+  'Topology reset successfully',
+  'info'
+);
 
 setInterval(updateCountdown, 1000);
 
